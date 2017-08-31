@@ -1,7 +1,13 @@
 using System;
 using System.Linq;
+using System.Net;
+using System.Text;
+using System.Threading;
 using DBreeze.Utils;
 using NBitcoin;
+using NBitcoin.DataEncoders;
+using NBitcoin.OpenAsset;
+using NBitcoin.Protocol;
 using NBitcoin.Stealth;
 
 namespace NBitcoinExample
@@ -11,7 +17,7 @@ namespace NBitcoinExample
 
         public static void Main(string[] args)
         {
-            test13();
+            test14();
         }
 
         public static void test_1()
@@ -80,8 +86,78 @@ namespace NBitcoinExample
         public static void test4()
         {
             var bitaps = new BitapsTransactionRepository();
+
             Transaction transaction = bitaps.Get("94b774e1c67e57c161d52ffce3e6e5f92b48d74aea0fa75799dd45f64876163a");
+
             Console.WriteLine(transaction.ToString());
+
+            Transaction payment = new Transaction();
+
+            payment.Inputs.Add(new TxIn()
+            {
+                PrevOut = new OutPoint(transaction.GetHash(), 1)
+            });
+
+            var programmingBlockchain = BitcoinAddress.Create("1KF8kUVHK42XzgcmJF4Lxz4wcL5WDL97PB", Network.Main);
+
+            payment.Outputs.Add(new TxOut()
+            {
+                Value = Money.Coins(0.004m),
+                ScriptPubKey = programmingBlockchain.ScriptPubKey
+            });
+
+            payment.Outputs.Add(new TxOut()
+            {
+                Value = Money.Coins(0.0059m),
+                ScriptPubKey = payment.Outputs[0].ScriptPubKey
+            });
+
+            Key key = Key.Parse("L1BwppiN4Vh62aUomi3YGKts2Vm1Tr5iDjuCxXop8DNJQmQqsib1");
+
+
+            //Feedback !  
+            var message = "Thanks ! :)";
+            var bytes = Encoding.UTF8.GetBytes(message);
+            payment.Outputs.Add(new TxOut()
+            {
+                Value = Money.Zero,
+                ScriptPubKey = TxNullDataTemplate.Instance.GenerateScriptPubKey(bytes)
+            }
+            );
+
+            Console.WriteLine(payment);
+
+            payment.Inputs[0].ScriptSig = key.PubKey.Hash.ScriptPubKey;
+            //also OK:  
+            //payment.Inputs[0].ScriptSig =  
+            //fundingTransaction.Outputs[1].ScriptPubKey;  
+            payment.Sign(key, false);
+
+            Console.WriteLine(payment);
+
+
+            using (var node = Node.Connect(Network.Main, new IPEndPoint(Dns.GetHostAddressesAsync("seed.bitcoin.sipa.be").Result[0], 8333))) //Connect to the node  
+            {
+                node.VersionHandshake(); //Say hello  
+
+                //Advertize your transaction(send just the hash)
+                node.SendMessage(new InvPayload(InventoryType.MSG_TX, payment.GetHash()));
+                // Send it
+
+                try
+                {
+                    node.SendMessage(new TxPayload(payment));
+
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
+
+                Thread.Sleep(500); //Wait a bit  
+            }
+
+
         }
 
         public static void test5()
@@ -299,7 +375,7 @@ OP_HASH160 3abcedad4d2603b3918c763f68d653337118f228 OP_EQUAL
             Transaction unsigned = builder.AddCoins(coin)
                 .Send(nico, Money.Coins(1.0m))
                 .BuildTransaction(false);
-            
+
 
             //Alice
             builder = new TransactionBuilder();
@@ -317,8 +393,8 @@ OP_HASH160 3abcedad4d2603b3918c763f68d653337118f228 OP_EQUAL
                 SignTransaction(unsigned);
 
             builder = new TransactionBuilder();
-            Transaction fullySigned = builder.AddCoins(coin) 
-                . CombineSignatures(satoshiSigned, aliceSigned);
+            Transaction fullySigned = builder.AddCoins(coin)
+                .CombineSignatures(satoshiSigned, aliceSigned);
 
             Console.WriteLine(fullySigned);
 
@@ -414,77 +490,78 @@ OP_HASH160 ba2cb82665d12eebf8c86a4094bba3fdb3d3e9c4 OP_EQUAL
         public static void test13()
         {
             /**
-bob:OP_DUP OP_HASH160 778ff3fb70ee72068c9f95e90c9b7cf67ab22b22 OP_EQUALVERIFY OP_CHECKSIG
-alice:OP_DUP OP_HASH160 ffd8e43f2693ba52818c8fcbbc60993342e9f60a OP_EQUALVERIFY OP_CHECKSIG
-bobAlice:2 03588aa0a680b5411fd9a38e12b252d6862d0aa4deaefe608007797ca3ede228a4 03c1520ec0a475926cde636970f676df0fc9426afb87e085dd3168c01f82d2d52d 2 OP_CHECKMULTISIG
+bob:OP_DUP OP_HASH160 ece246dedaac27f7fa1c7e8fefe26b22ab42e581 OP_EQUALVERIFY OP_CHECKSIG
+alice:OP_DUP OP_HASH160 6b0d35c6869f8340b622992b94ac61c7e5301d25 OP_EQUALVERIFY OP_CHECKSIG
+bobAlice:2 0213553ccfd0a0bd4ec3ff265dfa1fe573051834fc8269f0d4157a915c8db7d8da 03600b4561e4b3962679850f43e2dbc3e27990d90f67fece57dd1171d55039c39e 2 OP_CHECKMULTISIG
 {
-  "hash": "a26ee1943cd2a81329b6dc60eb417581617c0a966b11108d5b284d1e5a6a312b",
+  "hash": "9fcae54c2849da1ada309a9194956025ee8db791ae51f2e80ab6ff0e7456d023",
   "ver": 1,
   "vin_sz": 3,
   "vout_sz": 6,
   "lock_time": 0,
-  "size": 706,
+  "size": 707,
   "in": [
     {
       "prev_out": {
-        "hash": "d4868dc56115a8abee6cce893441a1b08dd59b77408caf9a1c66c6636ab8b2ae",
-        "n": 1
-      },
-      "scriptSig": "30440220211d317e76aeadb99e319998c6d273726bbaf0e79c10f83eb790210ba06629cf02201997ac37ab00fd6652516be555813201958551702f53ed7b957122dd2e54eede01 03588aa0a680b5411fd9a38e12b252d6862d0aa4deaefe608007797ca3ede228a4"
-    },
-    {
-      "prev_out": {
-        "hash": "d4868dc56115a8abee6cce893441a1b08dd59b77408caf9a1c66c6636ab8b2ae",
+        "hash": "6c6fbeadddd948cecbe226e3ebb1c8c56c9c67aa3b4ae1c33a08c260a49c6795",
         "n": 0
       },
-      "scriptSig": "30440220517f9edc2518713f928706f072f0a4a70f1f857247278fc7dcbf10756b832b6402205981383f3110c3bfbb7c93f8de821b99142cdc1f33cbbebf3a361f435143be2c01"
+      "scriptSig": "3044022051927fe8deb225b397da13cdb87c9ca59b20c0f817a746a7474f7b1c289448830220540ede4b61aaaf4c3c4b07cb9c9ce5173d5c93986bec03538fdda8b7c0bdcad501 0213553ccfd0a0bd4ec3ff265dfa1fe573051834fc8269f0d4157a915c8db7d8da"
     },
     {
       "prev_out": {
-        "hash": "d4868dc56115a8abee6cce893441a1b08dd59b77408caf9a1c66c6636ab8b2ae",
-        "n": 2
+        "hash": "66bd221b5ad6f959a5845e711866aec833a4c707947f87e80eaae3a54d5e0439",
+        "n": 0
       },
-      "scriptSig": "0 3044022003d18f37cf84f14770583fda0d3c20007d21ac59646976ffaf0bc72922df9dec02202ef1570ed671e83da43d88b40e4153f6d2b81748717b8a2134feb9fe50fd2c3301 304402202343c23b2931ddd30018ddc0d4b080feda2c8d89d7f158ccafa0e1bd5ad0e5db022044a4c3f8f58008a1468df7503f3c36192feb0763b17ae1be38dfdf1f1b7beefa01"
+      "scriptSig": "304402203640fe4fe5a3b761dedce6a122e0a199a2fad8ec3b0382c3d790158f71cd48f2022071b08b8a8dde6b7cba2eb3ec5bcc5f9e2c9b963a3e2120e9156f7e083649d58301"
+    },
+    {
+      "prev_out": {
+        "hash": "66883c8402ffdf24bee676d2d32516274466cad090c00ba44f61114e5ea21d1a",
+        "n": 0
+      },
+      "scriptSig": "0 304402205c579fc8cc1a436982393326c8f7d5eed2d885178ba47d8e53d133e7bb7a66ad022071bbad7738b957050890465cb3b33b733760af82160c27adfdc81365a9e6ff2a01 3045022100872152516bb680734d559e59093e3439da02fca7123a83d9a5f63f20cda3ee9702200b5c651aac8c5521f7c9c445785f70b2992238d38e09a56f70d46b94b9cb14d901"
     }
   ],
   "out": [
     {
       "value": "0.80000000",
-      "scriptPubKey": "OP_DUP OP_HASH160 778ff3fb70ee72068c9f95e90c9b7cf67ab22b22 OP_EQUALVERIFY OP_CHECKSIG"
+      "scriptPubKey": "OP_DUP OP_HASH160 ece246dedaac27f7fa1c7e8fefe26b22ab42e581 OP_EQUALVERIFY OP_CHECKSIG"
     },
     {
       "value": "0.20000000",
-      "scriptPubKey": "OP_DUP OP_HASH160 52e0e8069de80204d818ecc35d3c4405f82d857b OP_EQUALVERIFY OP_CHECKSIG"
+      "scriptPubKey": "OP_DUP OP_HASH160 e8e7f7591ea1a25310d41086ddefd74a4c45b637 OP_EQUALVERIFY OP_CHECKSIG"
     },
     {
       "value": "0.70000000",
-      "scriptPubKey": "OP_DUP OP_HASH160 ffd8e43f2693ba52818c8fcbbc60993342e9f60a OP_EQUALVERIFY OP_CHECKSIG"
+      "scriptPubKey": "OP_DUP OP_HASH160 6b0d35c6869f8340b622992b94ac61c7e5301d25 OP_EQUALVERIFY OP_CHECKSIG"
     },
     {
       "value": "0.30000000",
-      "scriptPubKey": "OP_DUP OP_HASH160 52e0e8069de80204d818ecc35d3c4405f82d857b OP_EQUALVERIFY OP_CHECKSIG"
+      "scriptPubKey": "OP_DUP OP_HASH160 e8e7f7591ea1a25310d41086ddefd74a4c45b637 OP_EQUALVERIFY OP_CHECKSIG"
     },
     {
       "value": "0.49990000",
-      "scriptPubKey": "2 03588aa0a680b5411fd9a38e12b252d6862d0aa4deaefe608007797ca3ede228a4 03c1520ec0a475926cde636970f676df0fc9426afb87e085dd3168c01f82d2d52d 2 OP_CHECKMULTISIG"
+      "scriptPubKey": "2 0213553ccfd0a0bd4ec3ff265dfa1fe573051834fc8269f0d4157a915c8db7d8da 03600b4561e4b3962679850f43e2dbc3e27990d90f67fece57dd1171d55039c39e 2 OP_CHECKMULTISIG"
     },
     {
       "value": "0.50000000",
-      "scriptPubKey": "OP_DUP OP_HASH160 52e0e8069de80204d818ecc35d3c4405f82d857b OP_EQUALVERIFY OP_CHECKSIG"
+      "scriptPubKey": "OP_DUP OP_HASH160 e8e7f7591ea1a25310d41086ddefd74a4c45b637 OP_EQUALVERIFY OP_CHECKSIG"
     }
   ]
-}             */
+}
+             */
             var bob = new Key();
             var alice = new Key();
             var bobAlice = PayToMultiSigTemplate.Instance
-                . GenerateScriptPubKey(2, bob.PubKey, alice.PubKey);
+                .GenerateScriptPubKey(2, bob.PubKey, alice.PubKey);
 
 
             Console.WriteLine($"bob:{bob.ScriptPubKey}");
             Console.WriteLine($"alice:{alice.ScriptPubKey}");
             Console.WriteLine($"bobAlice:{bobAlice}");
 
-      
+
             Transaction init = new Transaction();
 
             //Create fake coins
@@ -492,10 +569,17 @@ bobAlice:2 03588aa0a680b5411fd9a38e12b252d6862d0aa4deaefe608007797ca3ede228a4 03
             init.Outputs.Add(new TxOut(Money.Coins(1.0m), bob.PubKey.Hash));
             init.Outputs.Add(new TxOut(Money.Coins(1.0m), bobAlice));
 
+
+
             var CArr = init.Outputs.AsCoins().ToArray();
-            var aliceCoin =CArr[0];
+            var aliceCoin = CArr[0];
             var bobCoin = CArr[1];
             var bobAliceCoin = CArr[2];
+
+            aliceCoin.Outpoint = new OutPoint(uint256.Parse("66bd221b5ad6f959a5845e711866aec833a4c707947f87e80eaae3a54d5e0439"), 0);
+            bobCoin.Outpoint = new OutPoint(uint256.Parse("6c6fbeadddd948cecbe226e3ebb1c8c56c9c67aa3b4ae1c33a08c260a49c6795"), 0);
+            bobAliceCoin.Outpoint = new OutPoint(uint256.Parse("66883c8402ffdf24bee676d2d32516274466cad090c00ba44f61114e5ea21d1a"), 0);
+
 
             var satoshi = new Key();
 
@@ -517,6 +601,33 @@ bobAlice:2 03588aa0a680b5411fd9a38e12b252d6862d0aa4deaefe608007797ca3ede228a4 03
                 .SetChange(bobAlice)
                 .SendFees(Money.Coins(0.0001m))
                 .BuildTransaction(sign: true);
+
+            Console.WriteLine(tx);
+
+        }
+
+        public static void test14()
+        {
+            var coin = new Coin(
+                fromTxHash: new uint256("eb49a599c749c82d824caf9dd69c4e359261d49bbb0b9d6dc18c59bc9214e43b"),
+                fromOutputIndex: 0, 
+                amount: Money.Satoshis(2000000), 
+                scriptPubKey: new Script(Encoders.Hex.DecodeData("76a914c81e8e7b7ffca043b088a992795b15887c96159288ac")));
+
+            var issuance = new IssuanceCoin(coin);
+
+            var nico = BitcoinAddress.Create("15sYbVpRh6dyWycZMwPdxJWD4xbfxReeHe");
+            Console.WriteLine(nico.ToColoredAddress());
+
+            var bookKey = new BitcoinSecret("L1BwppiN4Vh62aUomi3YGKts2Vm1Tr5iDjuCxXop8DNJQmQqsib1");
+
+            TransactionBuilder builder = new TransactionBuilder();
+            var tx = builder.AddKeys(bookKey)  
+                .AddCoins(issuance)  
+                .IssueAsset(nico, new AssetMoney(issuance.AssetId, 10)) 
+                .SendFees(Money.Coins(0.0001m))  
+                .SetChange(bookKey.GetAddress())
+                .BuildTransaction(true);
 
             Console.WriteLine(tx);
 
