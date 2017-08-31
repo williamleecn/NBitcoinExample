@@ -1,31 +1,18 @@
-using Stratis.Bitcoin.Builder;
-using Stratis.Bitcoin.Configuration;
 using System;
-using System.Linq;
-using System.Threading.Tasks;
-using DBreeze.Utils;
 using NBitcoin;
-using Stratis.Bitcoin;
-using Stratis.Bitcoin.Features.BlockStore;
-using Stratis.Bitcoin.Features.Consensus;
-using Stratis.Bitcoin.Features.MemoryPool;
-using Stratis.Bitcoin.Features.Miner;
-using Stratis.Bitcoin.Features.RPC;
-using Stratis.Bitcoin.Utilities;
-using Microsoft.Extensions.DependencyInjection;
 using NBitcoin.Stealth;
 
-namespace Stratis.BitcoinD
+namespace NBitcoinExample
 {
-    public class Program
+    public class Test1
     {
 
         public static void Main(string[] args)
         {
-            test1();
+            test_1();
         }
 
-        public static void test1()
+        public static void test_1()
         {
             Key key = new Key(); //generates a new private key.  
             PubKey pubKey = key.PubKey; //gets the matching public key.
@@ -241,7 +228,8 @@ namespace Stratis.BitcoinD
             Console.WriteLine(transaction);
 
 
-        }
 
+        }
+    
     }
 }
